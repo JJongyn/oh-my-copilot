@@ -1,0 +1,65 @@
+{
+  "name": "oh-my-copilot-bridge",
+  "displayName": "Oh My Copilot Bridge",
+  "description": "Bridges VSCode Copilot Chat (vscode.lm) to an OpenAI-compatible HTTP API for oh-my-copilot CLI",
+  "version": "1.1.0",
+  "publisher": "oh-my-copilot",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["AI", "Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "oh-my-copilot-bridge.start",
+        "title": "Oh My Copilot: Start Bridge Server"
+      },
+      {
+        "command": "oh-my-copilot-bridge.stop",
+        "title": "Oh My Copilot: Stop Bridge Server"
+      },
+      {
+        "command": "oh-my-copilot-bridge.status",
+        "title": "Oh My Copilot: Show Bridge Status"
+      },
+      {
+        "command": "oh-my-copilot-bridge.copyToken",
+        "title": "Oh My Copilot: Copy Bridge Token"
+      }
+    ],
+    "configuration": {
+      "title": "Oh My Copilot Bridge",
+      "properties": {
+        "ohMyCopilotBridge.port": {
+          "type": "number",
+          "default": 0,
+          "description": "Port for the bridge server (0 = auto-assign)"
+        },
+        "ohMyCopilotBridge.autoStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically start bridge server when VSCode opens"
+        },
+        "ohMyCopilotBridge.defaultModel": {
+          "type": "string",
+          "default": "gpt-4o",
+          "description": "Default Copilot model family to use"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.4.0"
+  }
+}

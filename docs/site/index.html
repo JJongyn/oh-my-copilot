@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>oh-my-copilot — Terminal AI Agent for GitHub Copilot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Reset & Base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #070A10;
+      --bg-card:     #0D1117;
+      --bg-panel:    #0B0F16;
+      --border:      rgba(255,255,255,0.06);
+      --border-mid:  rgba(255,255,255,0.09);
+      --cyan:        #00E5FF;
+      --cyan-dim:    rgba(0,229,255,0.12);
+      --cyan-glow:   rgba(0,229,255,0.35);
+      --indigo:      #818CF8;
+      --indigo-dim:  rgba(129,140,248,0.12);
+      --text:        #E2E8F0;
+      --text-muted:  #475569;
+      --text-mid:    #94A3B8;
+      --green:       #34D399;
+      --yellow:      #FBBF24;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ─── Dot-grid background ───────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.035) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+
+    /* ─── Fade-in on scroll ─────────────────────────────────────── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.55s ease, transform 0.55s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-delay-4 { transition-delay: 0.4s; }
+
+    /* ─── Layout helpers ────────────────────────────────────────── */
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    section {
+      padding: 96px 0;
+    }
+
+    /* ─── HEADER ────────────────────────────────────────────────── */
+    #site-header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      transition: background 0.3s, border-color 0.3s, backdrop-filter 0.3s;
+      border-bottom: 1px solid transparent;
+    }
+
+    #site-header.scrolled {
+      background: rgba(7,10,16,0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom-color: var(--border);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    .wordmark {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+
+    .wordmark-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 15px;
+      background: var(--cyan);
+      border-radius: 1px;
+      animation: blink 1.1s step-end infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    nav a {
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      transition: color 0.15s;
+    }
+
+    nav a:hover {
+      color: var(--text);
+    }
+
+    .nav-github {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 8px;
+      padding: 6px 14px !important;
+      border: 1px solid var(--border-mid) !important;
+      border-radius: 6px;
+      color: var(--text) !important;
+      transition: border-color 0.15s, color 0.15s !important;
+    }
+
+    .nav-github:hover {
+      border-color: rgba(255,255,255,0.18) !important;
+    }
+
+    .star-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: rgba(255,255,255,0.05);
+      padding: 2px 7px;
+      border-radius: 20px;
+    }
+
+    /* ─── HERO ──────────────────────────────────────────────────── */
+    #hero {
+      padding: 160px 0 96px;
+    }
+
+    .hero-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 0;
+    }
+
+    .overline {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      padding: 5px 14px;
+      border: 1px solid rgba(0,229,255,0.2);
+      border-radius: 20px;
+      background: var(--cyan-dim);
+      margin-bottom: 28px;
+    }
+
+    .overline-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 6px var(--cyan);
+    }
+
+    h1 {
+      font-size: clamp(42px, 7vw, 80px);
+      font-weight: 800;
+      line-height: 1.04;
+      letter-spacing: -0.04em;
+      color: var(--text);
+      margin-bottom: 22px;
+    }
+
+    h1 br { display: block; }
+
+    .hero-sub {
+      font-size: 18px;
+      color: var(--text-muted);
+      max-width: 520px;
+      line-height: 1.65;
+      margin-bottom: 40px;
+      font-weight: 400;
+    }
+
+    /* ─── Install block ─────────────────────────────────────────── */
+    .install-block {
+      display: flex;
+      align-items: stretch;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 64px;
+    }
+
+    .install-cmd-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border-mid);
+      border-radius: 8px;
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+
+    .install-cmd-wrap:hover {
+      border-color: rgba(0,229,255,0.25);
+    }
+
+    .install-cmd {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--cyan);
+      padding: 11px 16px;
+      letter-spacing: -0.01em;
+      user-select: all;
+    }
+
+    .copy-btn {
+      padding: 11px 14px;
+      background: transparent;
+      border: none;
+      border-left: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+      display: flex;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .copy-btn:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.04);
+    }
+
+    .copy-btn.copied {
+      color: var(--green);
+    }
+
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 22px;
+      border: 1px solid var(--border-mid);
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-mid);
+      text-decoration: none;
+      background: transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .btn-ghost:hover {
+      color: var(--text);
+      border-color: rgba(255,255,255,0.18);
+    }
+
+    /* ─── Terminal mockup ───────────────────────────────────────── */
+    .terminal-mockup {
+      width: 100%;
+      max-width: 720px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-mid);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(0,229,255,0.05),
+        0 32px 80px rgba(0,0,0,0.6),
+        0 0 60px rgba(0,229,255,0.04);
+    }
+
+    .tm-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tm-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+    }
+
+    .tm-dot-r { background: #FF5F57; }
+    .tm-dot-y { background: #FEBC2E; }
+    .tm-dot-g { background: #28C840; }
+
+    .tm-title {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+    }
+
+    .tm-body {
+      padding: 18px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .tm-statusbar {
+      color: var(--cyan);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      opacity: 0.8;
+      margin-bottom: 12px;
+    }
+
+    .tm-prompt { color: var(--cyan); }
+    .tm-cmd    { color: var(--text); }
+    .tm-check  { color: var(--green); }
+    .tm-file   { color: var(--text-mid); }
+    .tm-done   { color: var(--indigo); font-weight: 600; }
+    .tm-muted  { color: var(--text-muted); }
+    .tm-gap    { display: block; height: 6px; }
+
+    /* ─── SECTION headings ──────────────────────────────────────── */
+    .section-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: clamp(26px, 4vw, 38px);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    .section-sub {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 480px;
+      line-height: 1.65;
+    }
+
+    /* ─── HOW IT WORKS ──────────────────────────────────────────── */
+    #how-it-works {
+      border-top: 1px solid var(--border);
+    }
+
+    .how-header {
+      margin-bottom: 56px;
+    }
+
+    .flow-diagram {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+    }
+
+    .flow-node {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px 24px;
+      transition: border-color 0.2s;
+    }
+
+    .flow-node:hover {
+      border-color: var(--border-mid);
+    }
+
+    .flow-node-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .flow-node-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .flow-node-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .flow-node-badge {
+      display: inline-block;
+      margin-top: 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 4px;
+    }
+
+    .badge-cyan {
+      background: var(--cyan-dim);
+      color: var(--cyan);
+      border: 1px solid rgba(0,229,255,0.18);
+    }
+
+    .badge-indigo {
+      background: var(--indigo-dim);
+      color: var(--indigo);
+      border: 1px solid rgba(129,140,248,0.18);
+    }
+
+    .badge-green {
+      background: rgba(52,211,153,0.1);
+      color: var(--green);
+      border: 1px solid rgba(52,211,153,0.18);
+    }
+
+    .flow-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 12px;
+      flex-shrink: 0;
+      color: var(--text-muted);
+      font-size: 18px;
+    }
+
+    .flow-note {
+      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .flow-note-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+    }
+
+    /* ─── MODES ─────────────────────────────────────────────────── */
+    #modes {
+      border-top: 1px solid var(--border);
+    }
+
+    .modes-header {
+      margin-bottom: 48px;
+    }
+
+    .modes-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .mode-card {
+      background: var(--bg-card);
+      padding: 32px 28px;
+      transition: background 0.2s;
+    }
+
+    .mode-card:hover {
+      background: #0F1520;
+    }
+
+    .mode-symbol {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--cyan);
+      margin-bottom: 14px;
+      opacity: 0.9;
+    }
+
+    .mode-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .mode-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* ─── AGENTS ────────────────────────────────────────────────── */
+    #agents {
+      border-top: 1px solid var(--border);
+    }
+
+    .agents-header {
+      margin-bottom: 48px;
+    }
+
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .agent-card {
+      background: var(--bg-card);
+      padding: 24px 22px;
+      transition: background 0.2s;
+      cursor: default;
+    }
+
+    .agent-card:hover {
+      background: #0F1520;
+    }
+
+    .agent-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--cyan);
+      margin-bottom: 4px;
+    }
+
+    .agent-role {
+      font-size: 11.5px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .agent-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    /* ─── INSTALL ───────────────────────────────────────────────── */
+    #install {
+      border-top: 1px solid var(--border);
+    }
+
+    .install-panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 56px 56px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 56px;
+      align-items: start;
+    }
+
+    .install-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .install-step {
+      display: flex;
+      gap: 18px;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .install-step:last-child {
+      border-bottom: none;
+    }
+
+    .step-num {
+      flex-shrink: 0;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid var(--border-mid);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .step-content {}
+
+    .step-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .step-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--cyan);
+      background: var(--cyan-dim);
+      border: 1px solid rgba(0,229,255,0.15);
+      border-radius: 6px;
+      padding: 8px 12px;
+      display: inline-block;
+      margin-top: 4px;
+    }
+
+    .step-note {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    .install-headline {
+      position: sticky;
+      top: 80px;
+    }
+
+    .install-headline .section-title {
+      margin-bottom: 20px;
+    }
+
+    .req-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 28px;
+    }
+
+    .req-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .req-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    /* ─── FOOTER ────────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0;
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .footer-left a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .footer-left a:hover {
+      color: var(--text);
+    }
+
+    .footer-sep {
+      color: var(--border-mid);
+    }
+
+    .footer-right {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* ─── Responsive ────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      section { padding: 64px 0; }
+
+      nav a:not(.nav-github) { display: none; }
+
+      h1 { font-size: 38px; }
+
+      .flow-diagram {
+        flex-direction: column;
+      }
+
+      .flow-arrow {
+        transform: rotate(90deg);
+        padding: 8px 0;
+      }
+
+      .modes-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .agents-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .install-panel {
+        grid-template-columns: 1fr;
+        padding: 32px 24px;
+        gap: 40px;
+      }
+
+      .install-headline {
+        position: static;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .agents-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── HEADER ─────────────────────────────────────────────────── -->
+<header id="site-header">
+  <div class="header-inner">
+    <a class="wordmark" href="#">
+      <span class="wordmark-cursor"></span>
+      oh-my-copilot
+    </a>
+    <nav>
+      <a href="#how-it-works">How it works</a>
+      <a href="#agents">Agents</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/JJongyn/oh-my-copilot" target="_blank" rel="noopener" class="nav-github">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+        GitHub
+        <span class="star-badge">&#9733; 0</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+<!-- ─── HERO ────────────────────────────────────────────────────── -->
+<section id="hero">
+  <div class="container">
+    <div class="hero-inner">
+
+      <div class="overline reveal">
+        <span class="overline-dot"></span>
+        Beta&nbsp;&nbsp;·&nbsp;&nbsp;GitHub Copilot Powered&nbsp;&nbsp;·&nbsp;&nbsp;No API Key
+      </div>
+
+      <h1 class="reveal reveal-delay-1">Terminal AI Agent,<br>for GitHub Copilot.</h1>
+
+      <p class="hero-sub reveal reveal-delay-2">
+        Ten built-in agents. Skills, MCP, background subagents, and TUI workflows.<br>
+        Works with your existing Copilot subscription.
+      </p>
+
+      <div class="install-block reveal reveal-delay-3">
+        <div class="install-cmd-wrap">
+          <span class="install-cmd" id="install-cmd-text">npm install -g github:JJongyn/oh-my-copilot</span>
+          <button class="copy-btn" id="copy-btn" aria-label="Copy install command" title="Copy">
+            <svg id="copy-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="4" width="9" height="11" rx="1.5"/>
+              <path d="M3 12H2.5A1.5 1.5 0 0 1 1 10.5v-8A1.5 1.5 0 0 1 2.5 1h8A1.5 1.5 0 0 1 12 2.5V3"/>
+            </svg>
+          </button>
+        </div>
+        <a href="https://github.com/JJongyn/oh-my-copilot" target="_blank" rel="noopener" class="btn-ghost">
+          View on GitHub
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 11L11 5M11 5H7M11 5V9"/>
+          </svg>
+        </a>
+      </div>
+
+      <div class="terminal-mockup reveal reveal-delay-4">
+        <div class="tm-titlebar">
+          <div class="tm-dot tm-dot-r"></div>
+          <div class="tm-dot tm-dot-y"></div>
+          <div class="tm-dot tm-dot-g"></div>
+          <span class="tm-title">oh-my-copilot — zsh</span>
+        </div>
+        <div class="tm-body">
+          <div class="tm-statusbar">&#9552;&#9552;&#9552; sisyphus &#9552;&#9552;&#9552; gpt-4o &#9552;&#9552;&#9552; &gt; agent &#9552;&#9552;&#9552; ctx:4.2k/128k &#9552;&#9552;&#9552;</div>
+          <span class="tm-gap"></span>
+          <span class="tm-prompt">&gt;</span> <span class="tm-cmd">refactor the auth module to use JWT</span>
+          <span class="tm-gap"></span>
+          <div><span class="tm-check">&#10003;</span> <span class="tm-file">Read auth/middleware.ts</span></div>
+          <div><span class="tm-check">&#10003;</span> <span class="tm-file">Edit auth/middleware.ts</span> <span class="tm-muted">— replaced session tokens with JWT</span></div>
+          <div><span class="tm-check">&#10003;</span> <span class="tm-file">Edit tests/auth.test.ts</span> <span class="tm-muted">— updated assertions</span></div>
+          <div><span class="tm-check">&#10003;</span> <span class="tm-file">npm test</span> <span class="tm-muted">— all 24 tests pass</span></div>
+          <span class="tm-gap"></span>
+          <div class="tm-done">&lt;promise&gt;DONE&lt;/promise&gt;</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ─── HOW IT WORKS ────────────────────────────────────────────── -->
+<section id="how-it-works">
+  <div class="container">
+    <div class="how-header reveal">
+      <div class="section-label">Architecture</div>
+      <h2 class="section-title">How it works</h2>
+      <p class="section-sub">A bridge extension inside VSCode exposes local agent access backed by vscode.lm. Editor tools, Copilot-visible MCP, and project skills flow into the same terminal runtime.</p>
+    </div>
+
+    <div class="flow-diagram">
+      <div class="flow-node reveal reveal-delay-1">
+        <div class="flow-node-label">01 — Your machine</div>
+        <div class="flow-node-title">Your Terminal</div>
+        <div class="flow-node-desc">Run <code style="font-family:inherit;color:var(--cyan)">omc</code> in any directory. The CLI connects to the bridge over localhost. Your files never leave your machine.</div>
+        <span class="flow-node-badge badge-cyan">localhost only</span>
+      </div>
+
+      <div class="flow-arrow reveal reveal-delay-2">&#8594;</div>
+
+      <div class="flow-node reveal reveal-delay-2">
+        <div class="flow-node-label">02 — Adapter layer</div>
+        <div class="flow-node-title">Bridge Extension</div>
+        <div class="flow-node-desc">A lightweight VSCode extension that translates OpenAI-style requests into <code style="font-family:inherit;color:var(--indigo)">vscode.lm</code> API calls. Auto-starts with VSCode.</div>
+        <span class="flow-node-badge badge-indigo">vscode.lm API</span>
+      </div>
+
+      <div class="flow-arrow reveal reveal-delay-3">&#8594;</div>
+
+      <div class="flow-node reveal reveal-delay-3">
+        <div class="flow-node-label">03 — Model provider</div>
+        <div class="flow-node-title">GitHub Copilot</div>
+        <div class="flow-node-desc">Your existing Copilot subscription. GPT-4o, Gemini, o1, and other models included in your plan. No separate API key, no extra billing.</div>
+        <span class="flow-node-badge badge-green">your subscription</span>
+      </div>
+    </div>
+
+    <div class="flow-note reveal">
+      <div class="flow-note-dot"></div>
+      Code stays on your machine. Only the prompt reaches Copilot — same as typing in the editor.
+    </div>
+  </div>
+</section>
+
+<!-- ─── MODES ───────────────────────────────────────────────────── -->
+<section id="modes">
+  <div class="container">
+    <div class="modes-header reveal">
+      <div class="section-label">Execution modes</div>
+      <h2 class="section-title">Four modes</h2>
+      <p class="section-sub">Switch with <code style="font-family:var(--mono);color:var(--cyan)">/mode</code> or natural language via <code style="font-family:inherit;color:var(--cyan)">/auto_set</code>.</p>
+    </div>
+
+    <div class="modes-grid">
+      <div class="mode-card reveal">
+        <div class="mode-symbol">?</div>
+        <div class="mode-name">ask</div>
+        <div class="mode-desc">Direct Q&amp;A. No tools invoked. Fastest response for questions, explanations, and quick lookups.</div>
+      </div>
+      <div class="mode-card reveal reveal-delay-1">
+        <div class="mode-symbol">#</div>
+        <div class="mode-name">plan</div>
+        <div class="mode-desc">Read-only analysis. Proposes a structured plan without making any file changes. Review before committing.</div>
+      </div>
+      <div class="mode-card reveal reveal-delay-2">
+        <div class="mode-symbol">&gt;</div>
+        <div class="mode-name">agent</div>
+        <div class="mode-desc">Full autonomous mode. Uses all tools — read, edit, run commands. Signals <code style="font-family:inherit">DONE</code> when the task is complete.</div>
+      </div>
+      <div class="mode-card reveal reveal-delay-3">
+        <div class="mode-symbol">&gt;&gt;</div>
+        <div class="mode-name">ultrawork</div>
+        <div class="mode-desc">Maximum autonomy. Enforces explore → plan → execute → verify. Oracle reviews the output; the agent fixes issues up to 3 rounds.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── AGENTS ──────────────────────────────────────────────────── -->
+<section id="agents">
+  <div class="container">
+    <div class="agents-header reveal">
+      <div class="section-label">Specialized agents</div>
+      <h2 class="section-title">Nine agents</h2>
+      <p class="section-sub">Each agent has a distinct execution pattern. Switch with <code style="font-family:inherit;color:var(--cyan)">/agent</code> or Tab, then layer skills and MCP on top.</p>
+    </div>
+
+    <div class="agents-grid">
+
+      <div class="agent-card reveal">
+        <div class="agent-name">basic</div>
+        <div class="agent-role">Primary · Minimal</div>
+        <div class="agent-desc">Closest to plain Copilot Chat behavior. Best when you want low-overhead help inside the same terminal harness.</div>
+      </div>
+
+      <div class="agent-card reveal reveal-delay-1">
+        <div class="agent-name">sisyphus</div>
+        <div class="agent-role">Primary · Default</div>
+        <div class="agent-desc">Primary orchestrator. Plans, executes, verifies, and now treats visible Copilot editor capabilities like search, docs, and GitHub tools as built-in leverage.</div>
+      </div>
+
+      <div class="agent-card reveal reveal-delay-2">
+        <div class="agent-name">hephaestus</div>
+        <div class="agent-role">Primary · Deep worker</div>
+        <div class="agent-desc">Explores the entire codebase before touching a single file. Best for large changes that span many files or browser-heavy UI work.</div>
+      </div>
+
+      <div class="agent-card reveal reveal-delay-3">
+        <div class="agent-name">prometheus</div>
+        <div class="agent-role">Primary · Planner</div>
+        <div class="agent-desc">Interview-driven. Asks the right questions, then produces a structured step-by-step execution plan.</div>
+      </div>
+
+      <div class="agent-card reveal">
+        <div class="agent-name">atlas</div>
+        <div class="agent-role">Specialist · Orchestrator</div>
+        <div class="agent-desc">Builds an explicit checklist, executes it fully, and self-verifies at each step. Heavy but thorough.</div>
+      </div>
+
+      <div class="agent-card reveal reveal-delay-1">
+        <div class="agent-name">oracle</div>
+        <div class="agent-role">Specialist · Reviewer</div>
+        <div class="agent-desc">Read-only architecture advisor. Used as the ultrawork verifier. Critical, skeptical, precise.</div>
+      </div>
+
+      <div class="agent-card reveal reveal-delay-2">
+        <div class="agent-name">explore</div>
+        <div class="agent-role">Specialist · Search</div>
+        <div class="agent-desc">Parallel codebase search. Runs 3+ simultaneous searches and returns structured, actionable results.</div>
+      </div>
+
+      <div class="agent-card reveal">
+        <div class="agent-name">metis</div>
+        <div class="agent-role">Specialist · Scope guard</div>
+        <div class="agent-desc">Pre-planning reviewer. Catches AI over-engineering before a single line is written.</div>
+      </div>
+
+      <div class="agent-card reveal reveal-delay-1">
+        <div class="agent-name">momus</div>
+        <div class="agent-role">Specialist · Plan verifier</div>
+        <div class="agent-desc">Checks that a plan is actually executable. Approval-biased — only rejects genuine blockers.</div>
+      </div>
+
+      <div class="agent-card reveal reveal-delay-2">
+        <div class="agent-name">librarian</div>
+        <div class="agent-role">Specialist · Docs</div>
+        <div class="agent-desc">Documentation researcher. Finds usage patterns and explains external libraries from source.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ─── INSTALL ─────────────────────────────────────────────────── -->
+<section id="install">
+  <div class="container">
+    <div class="install-panel reveal">
+
+      <div class="install-headline">
+      <div class="section-label">Get started</div>
+      <h2 class="section-title">One command.<br>Everything set up.</h2>
+      <p class="section-sub">Install the CLI, open VS Code or Cursor, then work mostly inside the TUI with agents, skills, MCP, and Copilot editor tools.</p>
+        <div class="req-list">
+          <div class="req-item"><span class="req-dot"></span> VSCode 1.90+ with GitHub Copilot</div>
+          <div class="req-item"><span class="req-dot"></span> Node.js 18+</div>
+          <div class="req-item"><span class="req-dot"></span> macOS, Linux, or Windows (WSL)</div>
+          <div class="req-item"><span class="req-dot"></span> Cursor also supported</div>
+        </div>
+      </div>
+
+      <div class="install-steps">
+
+        <div class="install-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">Install via npm</div>
+            <div class="step-code">npm install -g github:JJongyn/oh-my-copilot</div>
+            <div class="step-note">Builds the CLI and installs the bridge extension into VSCode or Cursor automatically.</div>
+          </div>
+        </div>
+
+        <div class="install-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">Open VSCode</div>
+            <div class="step-note">The bridge extension starts automatically. Verify via <code style="font-family:inherit;color:var(--cyan)">Cmd+Shift+P</code> → "Oh My Copilot: Show Bridge Status" — should show a green port number.</div>
+          </div>
+        </div>
+
+        <div class="install-step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">Run the CLI</div>
+            <div class="step-code">omc</div>
+            <div class="step-note">Then start with <code style="font-family:inherit;color:var(--cyan)">/init</code>, <code style="font-family:inherit;color:var(--cyan)">/skills</code>, <code style="font-family:inherit;color:var(--cyan)">/agent basic</code>, or <code style="font-family:inherit;color:var(--cyan)">/agent sisyphus</code>. If VSCode is not in PATH, the installer prints the manual bridge install command.</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ─── FOOTER ──────────────────────────────────────────────────── -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-left">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-mid)">oh-my-copilot</span>
+        <span class="footer-sep">·</span>
+        <span>MIT License</span>
+        <span class="footer-sep">·</span>
+        <a href="https://github.com/JJongyn/oh-my-copilot" target="_blank" rel="noopener">GitHub</a>
+        <span class="footer-sep">·</span>
+        <span>Inspired by <a href="https://github.com/code-yeongyu/oh-my-openagent" target="_blank" rel="noopener">oh-my-openagent</a> and <a href="https://github.com/code-yeongyu/oh-my-opencode" target="_blank" rel="noopener">opencode</a></span>
+      </div>
+      <div class="footer-right">
+        Powered by vscode.lm
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ─── Header scroll state ──────────────────────────────────────
+  (function() {
+    var header = document.getElementById('site-header');
+    function onScroll() {
+      if (window.scrollY > 10) {
+        header.classList.add('scrolled');
+      } else {
+        header.classList.remove('scrolled');
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  })();
+
+  // ─── Intersection Observer fade-in ───────────────────────────
+  (function() {
+    var els = document.querySelectorAll('.reveal');
+    if (!('IntersectionObserver' in window)) {
+      els.forEach(function(el) { el.classList.add('visible'); });
+      return;
+    }
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    els.forEach(function(el) { io.observe(el); });
+  })();
+
+  // ─── Copy to clipboard ────────────────────────────────────────
+  (function() {
+    var btn  = document.getElementById('copy-btn');
+    var text = document.getElementById('install-cmd-text').textContent.trim();
+    var icon = document.getElementById('copy-icon');
+
+    var checkIcon = '<polyline points="3 8 6 11 13 4"/>';
+    var copyIcon  = '<rect x="4" y="4" width="9" height="11" rx="1.5"/><path d="M3 12H2.5A1.5 1.5 0 0 1 1 10.5v-8A1.5 1.5 0 0 1 2.5 1h8A1.5 1.5 0 0 1 12 2.5V3"/>';
+
+    btn.addEventListener('click', function() {
+      navigator.clipboard.writeText(text).then(function() {
+        btn.classList.add('copied');
+        icon.innerHTML = checkIcon;
+        setTimeout(function() {
+          btn.classList.remove('copied');
+          icon.innerHTML = copyIcon;
+        }, 1800);
+      }).catch(function() {
+        // fallback
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.classList.add('copied');
+        icon.innerHTML = checkIcon;
+        setTimeout(function() {
+          btn.classList.remove('copied');
+          icon.innerHTML = copyIcon;
+        }, 1800);
+      });
+    });
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,32 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Build outputs — src/dist/ committed so npm install -g works without build step
+bridge/dist/
+bridge/out/
+web/node_modules/
+web/dist/
+web/.vite/
+
+# VS Code
+.vscode/
+
+# Ignore generated vsix but keep the pre-built release artifact
+*.vsix
+!bridge/oh-my-copilot-bridge-*.vsix
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Runtime
+.oh-my-copilot/
+*.log
+.omc/*
+!.omc/skills/
+!.omc/skills/**
+!.omc/skills-state.json
+bridge/.omc/
+src/.omc/
+.claude/

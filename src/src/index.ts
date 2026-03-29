@@ -1,0 +1,12 @@
+export { CopilotBridgeProvider, readBridgeInfo, BridgeConnectionError } from './provider/copilot-bridge';
+export { SessionManager } from './session/session-manager';
+export { McpClientManager } from './mcp/mcp-client';
+export { loadConfig, writeConfig } from './config/config-manager';
+export { resolveAgent, listAgents, BUILTIN_AGENT_FACTORIES } from './agents/builtin-agents';
+export { analyzeProject, formatProjectAnalysisMarkdown } from './init/project-analyzer';
+export { BUILTIN_HOOK_NAMES, resolveHooks } from './agent-runtime/hooks';
+export { createCli } from './cli/cli-program';
+export type { OhMyCopilotConfig } from './config/types';
+export type { ChatMessage, ModelInfo } from './provider/types';
+export type { AgentConfig, AgentFactory } from './agents/types';
+export type { Session, SessionMeta } from './session/session-manager';
