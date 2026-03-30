@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
+import * as os from 'os';
 import type { Status, CopilotMode, LoopPhase } from '../hooks/useChat';
 
 export interface StatusBarProps {
@@ -16,6 +17,7 @@ export interface StatusBarProps {
   tokensUsed?: number;
   modelMaxTokens?: number;
   currentTool?: string;
+  workingDirectory: string;
   width: number;
 }
 
@@ -58,6 +60,14 @@ function formatTokens(n: number): string {
   return String(n);
 }
 
+function formatWorkingDirectory(cwd: string, width: number): string {
+  const home = os.homedir();
+  const normalized = cwd.startsWith(home) ? `~${cwd.slice(home.length)}` : cwd;
+  const maxWidth = Math.max(18, width - 8);
+  if (normalized.length <= maxWidth) return normalized;
+  return `...${normalized.slice(-(maxWidth - 3))}`;
+}
+
 export function shouldRerenderStatusBar(prev: StatusBarProps, next: StatusBarProps): boolean {
   return !(
     prev.agentName === next.agentName &&
@@ -73,6 +83,7 @@ export function shouldRerenderStatusBar(prev: StatusBarProps, next: StatusBarPro
     prev.tokensUsed === next.tokensUsed &&
     prev.modelMaxTokens === next.modelMaxTokens &&
     prev.currentTool === next.currentTool &&
+    prev.workingDirectory === next.workingDirectory &&
     prev.width === next.width
   );
 }
@@ -91,6 +102,7 @@ function StatusBarInner({
   tokensUsed = 0,
   modelMaxTokens = 0,
   currentTool,
+  workingDirectory,
   width,
 }: StatusBarProps) {
   const shortId = sessionId.slice(0, 8);
@@ -122,6 +134,7 @@ function StatusBarInner({
   const displayName = copilotMode === 'ultrawork' ? 'auto' : agentName;
   const modeColor = MODE_COLOR[copilotMode];
   const modeIcon = MODE_ICON[copilotMode];
+  const displayCwd = formatWorkingDirectory(workingDirectory, width);
 
   // Frame color pulses with current state — instant visual feedback
   const frameColor = isError ? 'red' : isStreaming ? statusColor : 'cyan';
@@ -179,6 +192,9 @@ function StatusBarInner({
           <Text color={statusColor} bold>{statusDot} </Text>
           <Text color={statusColor}>{statusText}</Text>
         </Box>
+      </Box>
+      <Box width={width} paddingX={1}>
+        <Text color="gray" dimColor>{`cwd ${displayCwd}`}</Text>
       </Box>
     </Box>
   );

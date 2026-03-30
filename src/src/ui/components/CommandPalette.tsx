@@ -18,7 +18,7 @@ const BUILTIN_COMMANDS: Command[] = [
   { id: 'model',     label: '/model',     description: 'Switch model',                   args: '<name>' },
   { id: 'mode',      label: '/mode',      description: 'Switch mode (ask/plan/agent/ultrawork)' },
   { id: 'ultrawork', label: '/ultrawork', description: 'Ultrawork mode — Oracle verification loop (maximum autonomy)' },
-  { id: 'init',      label: '/init',      description: 'Analyze this repository and scaffold project context' },
+  { id: 'init',      label: '/init',      description: 'Scaffold hierarchical AGENTS.md context for this project' },
   { id: 'harness',   label: '/harness',   description: 'Generate, inspect, or regenerate a project-specific harness team' },
   { id: 'skills',    label: '/skills',    description: 'View and toggle skills for this session' },
   { id: 'new',       label: '/new',       description: 'Start a new session' },

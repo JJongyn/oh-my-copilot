@@ -211,6 +211,7 @@ export class CopilotBridgeProvider {
   ): Promise<string> {
     let result = '';
     for await (const chunk of this.streamChat(messages, { ...options, stream: true })) {
+      options.onChunk?.(chunk);
       result += chunk.content;
     }
     return result;

@@ -19,6 +19,7 @@ import { useChat } from './hooks/useChat';
 import type { CopilotMode } from './hooks/useChat';
 import { CopilotBridgeProvider } from '../provider/copilot-bridge';
 import { runInit } from '../cli/commands/init';
+import type { InitResult } from '../cli/commands/init';
 import { SessionManager } from '../session/session-manager';
 import type { Session, SessionMeta } from '../session/session-manager';
 import type { McpClientManager } from '../mcp/mcp-client';
@@ -62,7 +63,7 @@ const HELP_LINES = [
   ['/clear', 'Clear & new session'],
   ['/stop', 'Stop current generation'],
   ['/ultrawork', 'Enable ultrawork mode (Oracle verification loop)'],
-  ['/init', 'Analyze project and write oh-my-copilot context'],
+  ['/init', 'Scaffold hierarchical AGENTS.md context for this project'],
   ['/harness', 'Generate a project-specific harness team and activate it'],
   ['/skills', 'View and toggle skills for the current session'],
   ['/auto_set', 'Configure agent/model/mode via natural language'],
@@ -95,6 +96,28 @@ function HelpScreen({ onClose }: { onClose: () => void }) {
       <Text color="gray" dimColor>Press Esc to close</Text>
     </Box>
   );
+}
+
+function formatInitSummary(result: InitResult): string {
+  const createdAgents = result.agentsFiles.filter(file => file.status === 'created' || file.status === 'updated');
+  const keptAgents = result.agentsFiles.filter(file => file.status === 'kept');
+  return [
+    'Project init complete.',
+    '',
+    `- Path: ${result.targetDir}`,
+    `- Type: ${result.analysis.likelyAppType}`,
+    `- Languages: ${result.analysis.languages.join(', ') || 'Unknown'}`,
+    `- Source files: ${result.analysis.sourceFileCount}`,
+    `- Tests: ${result.analysis.hasTests ? 'yes' : 'no'}`,
+    `- Suggested model: ${result.defaultModel}`,
+    `- Suggested agent: ${result.suggestedAgent}`,
+    `- AGENTS scaffolded: ${createdAgents.length}`,
+    keptAgents.length > 0 ? `- AGENTS preserved: ${keptAgents.length}` : null,
+    result.configAlreadyExists
+      ? `- Config kept: ${result.configPath}`
+      : `- Config written: ${result.configPath}`,
+    `- Snapshot updated: ${result.contextPath}`,
+  ].filter(Boolean).join('\n');
 }
 
 export function App({ provider, initialAgent, initialModel, initialSession, mcpClient, bridgeTools = [] }: AppProps) {
@@ -153,6 +176,19 @@ export function App({ provider, initialAgent, initialModel, initialSession, mcpC
     setMode({ type: 'chat' });
     setInputValue('');
   }, []);
+
+  const runProjectInit = useCallback(async () => {
+    notify('Running project init...');
+    try {
+      const result = await runInit({
+        reporter: { log: () => {} },
+      });
+      chat.addSystemMessage(formatInitSummary(result));
+      notify('Project init complete');
+    } catch (err) {
+      notify(`Init failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }, [chat, notify]);
 
   // ─── Input change handler — detect "/" to open palette ───────────────────
   const handleInputChange = useCallback((val: string) => {
@@ -219,13 +255,7 @@ export function App({ provider, initialAgent, initialModel, initialSession, mcpC
         break;
       case 'init':
         setMode({ type: 'chat' });
-        notify('Running project init...');
-        try {
-          await runInit();
-          notify('Project init complete');
-        } catch (err) {
-          notify(`Init failed: ${err instanceof Error ? err.message : String(err)}`);
-        }
+        await runProjectInit();
         break;
       case 'mcp':
         setMode({ type: 'mcp-picker' });
@@ -248,7 +278,7 @@ export function App({ provider, initialAgent, initialModel, initialSession, mcpC
       default:
         setMode({ type: 'chat' });
     }
-  }, [chat, exit, notify, sessionManager]);
+  }, [chat, exit, notify, runProjectInit, sessionManager]);
 
   // ─── Submit (Enter on chat input) ─────────────────────────────────────────
   const handleSubmit = useCallback(async (val: string) => {
@@ -285,13 +315,7 @@ export function App({ provider, initialAgent, initialModel, initialSession, mcpC
           }
           setMode({ type: 'harness-panel' }); return;
         case 'init':
-          notify('Running project init...');
-          try {
-            await runInit();
-            notify('Project init complete');
-          } catch (err) {
-            notify(`Init failed: ${err instanceof Error ? err.message : String(err)}`);
-          }
+          await runProjectInit();
           return;
         case 'background':
           setMode({ type: 'background-picker' }); return;
@@ -376,7 +400,7 @@ export function App({ provider, initialAgent, initialModel, initialSession, mcpC
 
     if (mode.type === 'help') setMode({ type: 'chat' });
     chat.sendMessage(trimmed);
-  }, [chat, exit, notify, mode, sessionManager]);
+  }, [chat, exit, notify, mode, runProjectInit, sessionManager]);
 
   const paletteWidth = Math.min(width - 4, 70);
 
@@ -620,6 +644,7 @@ export function App({ provider, initialAgent, initialModel, initialSession, mcpC
           const m = chat.streamingContent.match(/^\[(\d+)\] running:\s*(\S+)/);
           return m ? m[2] : undefined;
         })()}
+        workingDirectory={process.cwd()}
         width={width}
       />
 

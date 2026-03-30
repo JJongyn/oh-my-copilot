@@ -73,8 +73,15 @@ export function getGlobalSkillsDir(): string {
 }
 
 export function ensureSkillDirectories(cwd: string = process.cwd()): void {
-  for (const dir of [getProjectSkillsDir(cwd), getProjectLocalSkillsDir(cwd), GLOBAL_SKILLS_DIR]) {
+  const requiredDirs = [getProjectSkillsDir(cwd), getProjectLocalSkillsDir(cwd)];
+  for (const dir of requiredDirs) {
     fs.mkdirSync(dir, { recursive: true });
+  }
+
+  try {
+    fs.mkdirSync(GLOBAL_SKILLS_DIR, { recursive: true });
+  } catch {
+    // Global skills are optional; project init/install should still succeed.
   }
 }
 

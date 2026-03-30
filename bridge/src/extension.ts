@@ -69,14 +69,7 @@ async function startServer(context: vscode.ExtensionContext): Promise<void> {
       dispose: () => stopServer(),
     });
 
-    vscode.window.showInformationMessage(
-      `Oh My Copilot Bridge started on port ${actualPort}`,
-      'Copy Token'
-    ).then(choice => {
-      if (choice === 'Copy Token' && currentToken) {
-        vscode.env.clipboard.writeText(currentToken);
-      }
-    });
+    vscode.window.showInformationMessage(`Oh My Copilot Bridge started on port ${actualPort}`);
   } catch (err) {
     vscode.window.showErrorMessage(`Failed to start Oh My Copilot Bridge: ${err}`);
   }
@@ -124,12 +117,9 @@ export function activate(context: vscode.ExtensionContext): void {
       if (currentPort && currentToken) {
         const choice = await vscode.window.showInformationMessage(
           `Oh My Copilot Bridge running on port ${currentPort}`,
-          'Copy Token', 'Stop Bridge', 'Open Config'
+          'Stop Bridge', 'Open Config'
         );
-        if (choice === 'Copy Token') {
-          await vscode.env.clipboard.writeText(currentToken);
-          vscode.window.showInformationMessage('Bridge token copied to clipboard.');
-        } else if (choice === 'Stop Bridge') {
+        if (choice === 'Stop Bridge') {
           stopServer();
           vscode.window.showInformationMessage('Bridge stopped.');
         } else if (choice === 'Open Config') {
@@ -143,15 +133,6 @@ export function activate(context: vscode.ExtensionContext): void {
         if (choice === 'Start Bridge') {
           await startServer(context);
         }
-      }
-    }),
-
-    vscode.commands.registerCommand('oh-my-copilot-bridge.copyToken', async () => {
-      if (currentToken) {
-        await vscode.env.clipboard.writeText(currentToken);
-        vscode.window.showInformationMessage('Token copied to clipboard.');
-      } else {
-        vscode.window.showWarningMessage('Bridge is not running — no token available.');
       }
     }),
   );

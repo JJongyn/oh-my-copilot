@@ -60,6 +60,7 @@ describe('UI render stability helpers', () => {
         tokensUsed: 10,
         modelMaxTokens: 1000,
         currentTool: undefined,
+        workingDirectory: '/tmp/project',
         width: 100,
       },
       {
@@ -75,6 +76,7 @@ describe('UI render stability helpers', () => {
         tokensUsed: 10,
         modelMaxTokens: 1000,
         currentTool: undefined,
+        workingDirectory: '/tmp/project',
         width: 100,
       },
     )).toBe(false);
@@ -95,6 +97,7 @@ describe('UI render stability helpers', () => {
         tokensUsed: 10,
         modelMaxTokens: 1000,
         currentTool: 'read_file',
+        workingDirectory: '/tmp/project',
         width: 100,
       },
       {
@@ -110,6 +113,7 @@ describe('UI render stability helpers', () => {
         tokensUsed: 10,
         modelMaxTokens: 1000,
         currentTool: 'edit_file',
+        workingDirectory: '/tmp/project',
         width: 100,
       },
     )).toBe(true);

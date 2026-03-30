@@ -7,7 +7,13 @@ import type { ChatMessage } from '../provider/types';
 import type { HarnessGeneratedAgent, HarnessGeneratedSkill, HarnessPattern, HarnessTeam } from './types';
 
 interface HarnessPlannerProvider {
-  completeChat(messages: ChatMessage[], options?: { model?: string }): Promise<string>;
+  completeChat(
+    messages: ChatMessage[],
+    options?: {
+      model?: string;
+      onChunk?: (chunk: { content: string; done: boolean }) => void;
+    },
+  ): Promise<string>;
 }
 
 interface HarnessAgentPlan {
@@ -408,13 +414,21 @@ async function generatePlanWithModel(
   provider: HarnessPlannerProvider,
   model: string,
   cwd: string,
+  onPlanningChunk?: (chunk: string) => void,
 ): Promise<HarnessPlan> {
   const response = await provider.completeChat(
     [
       { role: 'system', content: 'You are a precise system designer. Return JSON only.' },
       { role: 'user', content: buildHarnessPlanningPrompt(cwd) },
     ],
-    { model },
+    {
+      model,
+      onChunk: (chunk) => {
+        if (chunk.content) {
+          onPlanningChunk?.(chunk.content);
+        }
+      },
+    },
   );
 
   const jsonText = extractJsonObject(response);
@@ -457,7 +471,11 @@ export function deleteHarnessArtifacts(cwd: string = process.cwd()): void {
 
 export async function generateHarness(
   cwd: string = process.cwd(),
-  options?: { provider?: HarnessPlannerProvider; model?: string },
+  options?: {
+    provider?: HarnessPlannerProvider;
+    model?: string;
+    onPlanningChunk?: (chunk: string) => void;
+  },
 ): Promise<HarnessTeam> {
   deleteHarnessArtifacts(cwd);
   const projectName = detectProjectName(cwd);
@@ -468,7 +486,7 @@ export async function generateHarness(
   let generationWarning: string | undefined;
   if (options?.provider && options.model) {
     try {
-      plan = await generatePlanWithModel(options.provider, options.model, cwd);
+      plan = await generatePlanWithModel(options.provider, options.model, cwd, options.onPlanningChunk);
       generationMode = 'model-assisted';
     } catch (error) {
       const classified = classifyHarnessPlannerFailure(error);

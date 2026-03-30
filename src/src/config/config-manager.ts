@@ -51,6 +51,7 @@ export function loadConfig(cwd: string = process.cwd()): OhMyCopilotConfig {
 export function writeConfig(config: OhMyCopilotConfig, targetDir: string = process.cwd()): string {
   const targetPath = path.join(targetDir, 'oh-my-copilot.jsonc');
   const content = JSON.stringify(config, null, 2);
+  fs.mkdirSync(targetDir, { recursive: true });
   fs.writeFileSync(targetPath, content + '\n', 'utf-8');
   return targetPath;
 }

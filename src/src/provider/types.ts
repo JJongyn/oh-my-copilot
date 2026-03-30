@@ -17,6 +17,7 @@ export interface ChatCompletionOptions {
   maxTokens?: number;
   stream?: boolean;
   signal?: AbortSignal;
+  onChunk?: (chunk: ChatStreamChunk) => void;
 }
 
 export interface ChatStreamChunk {

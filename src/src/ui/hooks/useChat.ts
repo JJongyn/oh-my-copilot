@@ -111,6 +111,7 @@ const MAX_ORACLE_RETRIES = 3;
 
 /** Max times the same file path can be written before we treat it as a loop */
 const MAX_WRITES_PER_FILE = 2;
+const INITIAL_STREAMING_PLACEHOLDER = '[thinking] Awaiting first response token...';
 
 // ─── Prompts ─────────────────────────────────────────────────────────────────
 
@@ -728,6 +729,7 @@ Harness mode is active.
 
       const userMsg: Message = { id: nextId(), role: 'user', content };
       setCompletedMessages(prev => [...prev, userMsg]);
+      setStreamingContent(INITIAL_STREAMING_PLACEHOLDER);
 
       const sessionCopy = session;
       sessionCopy.meta.activeSkills = [...activeSkills];
@@ -810,6 +812,13 @@ Harness mode is active.
     setStreamingContent('');
     setAgentIteration(0);
     setLoopPhase('done');
+  }, []);
+
+  const addSystemMessage = useCallback((content: string) => {
+    setCompletedMessages(prev => [
+      ...prev,
+      { id: nextId(), role: 'assistant', content, agentName: 'omc:system' },
+    ]);
   }, []);
 
   const dismissError = useCallback(() => {
@@ -970,32 +979,57 @@ Harness mode is active.
   }, []);
 
   const generateHarnessForSession = useCallback(async () => {
-    const usage = await provider.getCopilotUsage().catch(() => null);
-    const chatQuotaLimit = usage?.quota?.chatMessages?.limit ?? null;
-    const chatQuotaUsed = usage?.quota?.chatMessages?.used ?? 0;
-    if (chatQuotaLimit !== null && chatQuotaUsed >= chatQuotaLimit) {
-      throw new Error('Harness generation could not start because this Copilot account has no remaining chat usage. Try again later or switch to another account.');
-    }
+    setStatus('streaming');
+    setError(null);
+    setLoopPhase('executing');
+    let planningPreview = '';
+    setStreamingContent('[thinking] Harness planner is analyzing this repository...');
 
-    const team = await generateHarness(process.cwd(), { provider, model });
-    setHarnessTeam(team);
-    const harnessSkillNames = team.skills.map(skill => skill.name);
-    setSessionSkills([...activeSkills, ...harnessSkillNames]);
-    setCopilotMode('harness');
-    setAgentName(team.recommendedExecutor);
-    session.meta.harnessTeamName = team.name;
-    session.meta.agent = team.recommendedExecutor;
-    session.meta.activeSkills = Array.from(new Set([...(session.meta.activeSkills ?? []), ...harnessSkillNames])).sort();
-    sessionManager.current.save(session);
-    setCompletedMessages(prev => [
-      ...prev,
-      {
-        id: nextId(),
-        role: 'assistant',
-        content: `Harness generated and activated.\n\n- Team: ${team.name}\n- Pattern: ${team.pattern}\n- Executor: ${team.recommendedExecutor}\n- Generation: ${team.generationMode ?? 'unknown'}${team.modelUsed ? ` (${team.modelUsed})` : ''}${team.generationWarning ? `\n- Warning: ${team.generationWarning}` : ''}\n- Agents: ${team.agents.map(agent => `${agent.name} (${agent.role})`).join(', ')}\n- Skills enabled: ${team.skills.map(skill => skill.name).join(', ')}`,
-        agentName: 'harness:system',
-      },
-    ]);
+    try {
+      const usage = await provider.getCopilotUsage().catch(() => null);
+      const chatQuotaLimit = usage?.quota?.chatMessages?.limit ?? null;
+      const chatQuotaUsed = usage?.quota?.chatMessages?.used ?? 0;
+      if (chatQuotaLimit !== null && chatQuotaUsed >= chatQuotaLimit) {
+        throw new Error('Harness generation could not start because this Copilot account has no remaining chat usage. Try again later or switch to another account.');
+      }
+
+      const team = await generateHarness(process.cwd(), {
+        provider,
+        model,
+        onPlanningChunk: (chunk) => {
+          planningPreview += chunk;
+          setStreamingContent(
+            `[thinking] Harness planner is designing a project-specific team...\n\n${planningPreview.slice(-800)}`,
+          );
+        },
+      });
+      setHarnessTeam(team);
+      const harnessSkillNames = team.skills.map(skill => skill.name);
+      setSessionSkills([...activeSkills, ...harnessSkillNames]);
+      setCopilotMode('harness');
+      setAgentName(team.recommendedExecutor);
+      session.meta.harnessTeamName = team.name;
+      session.meta.agent = team.recommendedExecutor;
+      session.meta.activeSkills = Array.from(new Set([...(session.meta.activeSkills ?? []), ...harnessSkillNames])).sort();
+      sessionManager.current.save(session);
+      setCompletedMessages(prev => [
+        ...prev,
+        {
+          id: nextId(),
+          role: 'assistant',
+          content: `Harness generated and activated.\n\n- Team: ${team.name}\n- Pattern: ${team.pattern}\n- Executor: ${team.recommendedExecutor}\n- Generation: ${team.generationMode ?? 'unknown'}${team.modelUsed ? ` (${team.modelUsed})` : ''}${team.generationWarning ? `\n- Warning: ${team.generationWarning}` : ''}\n- Agents: ${team.agents.map(agent => `${agent.name} (${agent.role})`).join(', ')}\n- Skills enabled: ${team.skills.map(skill => skill.name).join(', ')}`,
+          agentName: 'harness:system',
+        },
+      ]);
+      setStatus('idle');
+      setStreamingContent('');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+      setStatus('error');
+      setStreamingContent('');
+      throw err;
+    }
   }, [activeSkills, model, provider, session, setSessionSkills]);
 
   return {
@@ -1020,6 +1054,7 @@ Harness mode is active.
     chatQuota,
     sendMessage,
     stopGeneration,
+    addSystemMessage,
     dismissError,
     switchAgent,
     switchModel,

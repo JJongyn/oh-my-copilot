@@ -9,7 +9,7 @@
     "omc": "./src/bin/oh-my-copilot.mjs"
   },
   "scripts": {
-    "postinstall": "cd ~ && node \"$npm_config_prefix/lib/node_modules/$npm_package_name/scripts/install-bridge.js\" || true",
+    "postinstall": "node scripts/install-bridge.js || true",
     "verify": "npm --prefix src run typecheck && npm --prefix src run build && npm --prefix src test && npm --prefix bridge run compile",
     "package:bridge": "npm --prefix bridge run compile && (cd bridge && npx vsce package --no-dependencies)"
   },

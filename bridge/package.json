@@ -23,10 +23,6 @@
       {
         "command": "oh-my-copilot-bridge.status",
         "title": "Oh My Copilot: Show Bridge Status"
-      },
-      {
-        "command": "oh-my-copilot-bridge.copyToken",
-        "title": "Oh My Copilot: Copy Bridge Token"
       }
     ],
     "configuration": {

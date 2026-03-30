@@ -41,17 +41,7 @@ export function createCli(): Command {
 ${BOLD}oh-my-copilot${RESET} v${VERSION} — VSCode Copilot Chat CLI
   Powered by ${CYAN}vscode.lm${RESET} via oh-my-copilot-bridge extension
   Agents: ${MAGENTA}sisyphus${RESET} | ${MAGENTA}prometheus${RESET} | ${MAGENTA}hephaestus${RESET} | ${MAGENTA}oracle${RESET} | ${MAGENTA}atlas${RESET} | ${MAGENTA}metis${RESET} | ${MAGENTA}momus${RESET}
-`)
-    .action(async (opts) => {
-      await launchTUI({
-        agent: opts.agent,
-        model: opts.model,
-        resume: opts.resume,
-      });
-    })
-    .option('-a, --agent <name>', 'agent to use (default: sisyphus)')
-    .option('-m, --model <name>', 'model to use')
-    .option('-r, --resume <session-id>', 'resume a previous session');
+`);
 
   // install command
   program
@@ -65,7 +55,7 @@ ${BOLD}oh-my-copilot${RESET} v${VERSION} — VSCode Copilot Chat CLI
 
   program
     .command('init')
-    .description('Analyze the current repository and scaffold project-local oh-my-copilot context')
+    .description('Scaffold hierarchical AGENTS.md context for the current repository')
     .option('-d, --dir <path>', 'target directory (default: cwd)')
     .option('-f, --force', 'overwrite existing oh-my-copilot.jsonc')
     .action(async (opts) => {

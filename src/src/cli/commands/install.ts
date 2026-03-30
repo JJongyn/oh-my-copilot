@@ -73,8 +73,12 @@ export async function runInstall(options: { yes?: boolean; dir?: string } = {}):
 
   const configPath = writeConfig(config, targetDir);
   console.log(`\x1b[32m✓ Created config: ${configPath}\x1b[0m`);
-  ensureSkillDirectories(targetDir);
-  console.log(`\x1b[32m✓ Ensured skill directories under .omc/\x1b[0m`);
+  try {
+    ensureSkillDirectories(targetDir);
+    console.log(`\x1b[32m✓ Ensured skill directories under .omc/\x1b[0m`);
+  } catch (err) {
+    console.log(`\x1b[33m⚠ Skill directory setup partially failed: ${err instanceof Error ? err.message : String(err)}\x1b[0m`);
+  }
   console.log();
   console.log('Next steps:');
   console.log('  • oh-my-copilot chat         — start interactive chat');
